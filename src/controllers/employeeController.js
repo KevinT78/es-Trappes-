@@ -1,0 +1,126 @@
+const Employee = require('../models/Employee');
+const {sendSalaryPaymentConfirmation} = require('../utils/emailService');
+
+// Ajouter un paiement de salaire
+exports.addSalaryPayment = async (req, res, next) => {
+  try {
+    const { employeeId, hoursWorked } = req.body; // Extraire l'ID de l'employé et le nombre d'heures travaillées du corps de la requête
+    const employee = await Employee.findById(employeeId); // Récupérer l'employé par son ID
+    if (!employee) {
+      const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
+      error.status = 404;
+      throw error;
+    }
+
+    let amount;
+    const payment = { date: new Date() };
+
+    if (employee.salaryType === 'Horaire') {
+      if (hoursWorked === undefined) {
+        const error = new Error('Hours worked is required for hourly salary type');
+        error.status = 400;
+        throw error;
+      }
+      amount = employee.salary * hoursWorked; // Calculer le montant total pour le salaire horaire
+      payment.hoursWorked = hoursWorked; // Ajouter le nombre d'heures travaillées
+    } else {
+      amount = employee.salary; // Utiliser le salaire mensuel directement
+    }
+
+    payment.amount = amount;
+    employee.paymentHistory.push(payment); // Ajouter le paiement à l'historique des paiements de l'employé
+    await employee.save(); // Sauvegarder les modifications dans la base de données
+
+    // Envoyer l'email de confirmation de paiement de salaire
+    await sendSalaryPaymentConfirmation(employee, payment);
+
+    res.status(200).json(employee); // Répondre avec l'employé mis à jour
+  } catch (error) {
+    next(error); // Passer l'erreur au middleware de gestion des erreurs
+  }
+};
+
+// Récupérer l'historique des paiements
+exports.getSalaryHistory = async (req, res, next) => {
+  try {
+    const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
+    const employee = await Employee.findById(employeeId); // Récupérer l'employé par son ID
+    if (!employee) {
+      const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
+      error.status = 404;
+      throw error;
+    }
+    res.status(200).json(employee.paymentHistory); // Répondre avec l'historique des paiements de l'employé
+  } catch (error) {
+    next(error); // Passer l'erreur au middleware de gestion des erreurs
+  }
+};
+
+// Récupérer tous les employés
+exports.getAllEmployees = async (req, res, next) => {
+  try {
+    const employees = await Employee.find(); // Récupérer tous les employés de la base de données
+    res.status(200).json(employees); // Répondre avec la liste des employés
+  } catch (error) {
+    next(error); // Passer l'erreur au middleware de gestion des erreurs
+  }
+};
+
+// Récupérer un employé par ID
+exports.getEmployeeById = async (req, res, next) => {
+  try {
+    const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
+    const employee = await Employee.findById(employeeId); // Récupérer l'employé par son ID
+    if (!employee) {
+      const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
+      error.status = 404;
+      throw error;
+    }
+    res.status(200).json(employee); // Répondre avec l'employé trouvé
+  } catch (error) {
+    next(error); // Passer l'erreur au middleware de gestion des erreurs
+  }
+};
+
+// Créer un nouvel employé
+exports.createEmployee = async (req, res, next) => {
+  try {
+    const employee = new Employee(req.body); // Créer une nouvelle instance d'Employee avec les données du corps de la requête
+    await employee.save(); // Sauvegarder l'employé dans la base de données
+    res.status(201).json(employee); // Répondre avec l'employé créé
+  } catch (error) {
+    next(error); // Passer l'erreur au middleware de gestion des erreurs
+  }
+};
+
+// Mettre à jour un employé
+exports.updateEmployee = async (req, res, next) => {
+  try {
+    const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
+    const employee = await Employee.findByIdAndUpdate(employeeId, req.body, { new: true }); // Mettre à jour les données de l'employé avec les nouvelles données du corps de la requête
+    if (!employee) {
+      const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
+      error.status = 404;
+      throw error;
+    }
+    res.status(200).json(employee); // Répondre avec l'employé mis à jour
+  } catch (error) {
+    next(error); // Passer l'erreur au middleware de gestion des erreurs
+  }
+};
+
+// Supprimer un employé
+exports.deleteEmployee = async (req, res, next) => {
+  try {
+    const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
+    const employee = await Employee.findByIdAndDelete(employeeId); // Supprimer l'employé par son ID
+    if (!employee) {
+      const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
+      error.status = 404;
+      throw error;
+    }
+    res.status(200).json({ message: 'Employee deleted successfully' }); // Répondre avec un message de succès
+  } catch (error) {
+    next(error); // Passer l'erreur au middleware de gestion des erreurs
+  }
+};
