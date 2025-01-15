@@ -37,24 +37,49 @@ exports.getMemberById = async (req, res, next) => {
   }
 };
 
-// Mettre à jour un membre
+// // Mettre à jour un membre
 exports.updateMember = async (req, res, next) => {
   try {
-    const member = await Member.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, updatedAt: Date.now() }, // Mettre à jour les données du membre avec les nouvelles données du corps de la requête
-      { new: true, runValidators: true } // Options pour renvoyer le membre mis à jour et exécuter les validateurs
-    );
+    const member = await Member.findById(req.params.id); // Récupérer le membre par son ID
     if (!member) {
       const error = new Error('Member not found');
       error.status = 404;
       throw error;
     }
-    res.json(member); // Répondre avec le membre mis à jour
+
+    // Mettre à jour les données du membre avec les nouvelles données du corps de la requête
+    const updatedMember = await Member.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, updatedAt: Date.now() },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedMember) {
+      const error = new Error('Member not found');
+      error.status = 404;
+      throw error;
+    }
+
+    // Vérifier si totalPaid est supérieur ou égal à totalDue
+    if (updatedMember.totalPaid >= updatedMember.totalDue) {
+      const excess = updatedMember.totalPaid - updatedMember.totalDue;
+      updatedMember.totalPaid = excess;
+      updatedMember.totalDue = 0;
+      updatedMember.paymentStatus = 'paid';
+    } else if (updatedMember.totalPaid > 0) {
+      updatedMember.paymentStatus = 'partial';
+    } else {
+      updatedMember.paymentStatus = 'unpaid';
+    }
+
+    await updatedMember.save(); // Sauvegarder les modifications dans la base de données
+
+    res.json(updatedMember); // Répondre avec le membre mis à jour
   } catch (error) {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
+
 
 // Supprimer un membre
 exports.deleteMember = async (req, res, next) => {
@@ -85,8 +110,11 @@ exports.addPayment = async (req, res, next) => {
     member.paymentHistory.push({ amount, paymentMethod }); // Ajouter le paiement à l'historique des paiements du membre
     member.totalPaid += amount; // Mettre à jour le total payé par le membre
 
-    // Mettre à jour le statut de paiement du membre
+    // Vérifier si totalPaid est supérieur ou égal à totalDue
     if (member.totalPaid >= member.totalDue) {
+      const excess = member.totalPaid - member.totalDue;
+      member.totalPaid = excess;
+      member.totalDue = 0;
       member.paymentStatus = 'paid';
     } else if (member.totalPaid > 0) {
       member.paymentStatus = 'partial';
@@ -102,6 +130,7 @@ exports.addPayment = async (req, res, next) => {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
+
 
 // Envoyer des rappels de paiement
 exports.sendPaymentReminders = async (req, res, next) => {
@@ -122,7 +151,3 @@ exports.sendPaymentReminders = async (req, res, next) => {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
-
-
-
-
