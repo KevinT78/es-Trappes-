@@ -18,11 +18,15 @@ const memberSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   gender: { type: String, enum: ['M', 'F'], required: true },
+  birthDate: {
+    type: String,  
+    required: false
+  },
   age: { type: Number, required: true },
   category: {
     type: String,
     enum: [
-      'Seniors', 'SeniorsF', 'Veterans',
+      'Seniors', 'Seniors F', 'Veterans',
       'U20M', 'U19M', 'U19F', 'U20F',
       'U18M', 'U17M', 'U18F', 'U17F',
       'U16M', 'U16F', 'U15M', 'U15F',

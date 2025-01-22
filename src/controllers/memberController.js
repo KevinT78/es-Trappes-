@@ -151,3 +151,7 @@ exports.sendPaymentReminders = async (req, res, next) => {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
+
+
+
+

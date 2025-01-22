@@ -79,4 +79,3 @@ exports.sendSalaryPaymentConfirmation = async (employee, payment) => {
     return false; // Retourner false si l'email n'a pas pu être envoyé
   }
 };
-
