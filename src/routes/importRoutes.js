@@ -2,7 +2,8 @@
 const express = require('express'); // Module pour créer des applications web
 const router = express.Router(); // Création d'un routeur Express
 const multer = require('multer'); // Module pour gérer les uploads de fichiers
-const { importMembers } = require('../controllers/importController'); // Importation du contrôleur pour importer les membres
+const { importMembers, getEntriesWithComments } = require('../controllers/importController'); // Importation du contrôleur pour importer les membres
+// const { importMembers } = require('../controllers/importController'); // Importation du contrôleur pour importer les membres
 
 // Configuration de multer pour l'upload de fichiers Excel
 const storage = multer.diskStorage({
@@ -33,6 +34,9 @@ const upload = multer({
 
 // Définir la route POST pour l'upload de fichiers
 router.post('/', upload.single('file'), importMembers); // Utiliser le middleware multer pour gérer l'upload de fichiers et appeler le contrôleur importMembers
+
+router.get('/entries-with-comments', getEntriesWithComments);
+
 
 // Exportation du routeur
 module.exports = router;

@@ -7,6 +7,10 @@ const cors = require('cors');
 const connectDB = require('./utils/db');
 const errorHandler = require('./middlewares/errorHandler');
 
+const cron = require('node-cron');
+const updateAges = require('./updateAges');
+
+
 // Initialiser une instance d'Express
 const app = express();
 
@@ -26,6 +30,14 @@ app.use(errorHandler);
 // Établir la connexion à la base de données
 connectDB();
 
+// Exécuter la mise à jour au démarrage
+updateAges();
+
+// Planifier la mise à jour quotidienne à minuit (00:00)
+cron.schedule('0 0 * * *', () => {
+  console.log('Lancement de la mise à jour quotidienne des âges.');
+  updateAges();
+});
 // Démarrer le serveur
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

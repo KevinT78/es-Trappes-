@@ -1,189 +1,136 @@
-const xlsx = require('xlsx'); // Module pour lire les fichiers Excel
-const Member = require('../models/Member'); // Modèle pour les membres
-const Employee = require('../models/Employee'); // Modèle pour les employés
-const setupLogging = require('../utils/logging/logger'); // Configuration du logging
-const processMember = require('../utils/helpers/memberProcessor'); // Fonction pour traiter les membres
-const processEmployee = require('../utils/helpers/employeeProcessor'); // Fonction pour traiter les employés
+const xlsx = require('xlsx');
+const Member = require('../models/Member');
+const Employee = require('../models/Employee');
+const processMember = require('../utils/helpers/memberProcessor');
+const processEmployee = require('../utils/helpers/employeeProcessor');
+const { normalizePhoneNumber } = require('../utils/helpers/phoneHelper');
 
-// Fonction pour importer les membres
-const importMembers = async (req, res) => {
+// Importation des membres et employés depuis un fichier
+exports.importMembers = async (req, res, next) => {
   try {
-    // Configuration du logging uniquement lorsque l'endpoint est appelé
-    const { logger, noLicenseLogger, errorLogger, warningLogger, duplicateLicenseLogger, defaultValueLogger } = setupLogging();
-
-    // Vérification si un fichier a été uploadé
+    // Vérification de l'existence du fichier
     if (!req.file) {
       return res.status(400).json({ message: "Aucun fichier n'a été uploadé" });
     }
 
-    // Logging du début de l'importation
-    logger.info(`Début de l'importation du fichier: ${req.file.path}`);
-
     // Lecture du fichier Excel
-    const workbook = xlsx.readFile(req.file.path, {
-      cellDates: true,
-      dateNF: 'DD/MM/YYYY'
-    });
-
-    // Sélection de la première feuille du classeur
+    const workbook = xlsx.readFile(req.file.path, { cellDates: true, dateNF: 'DD/MM/YYYY' });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    // Conversion de la feuille en JSON
-    const data = xlsx.utils.sheet_to_json(worksheet, {
-      raw: false,
-      dateNF: 'DD/MM/YYYY'
+    const data = xlsx.utils.sheet_to_json(worksheet, { raw: false, dateNF: 'DD/MM/YYYY' });
+
+    // Exclure certaines valeurs spécifiques
+    const excludedValues = ["Problème Affectation ANCV", "AUTRES CAS", "MEMBRES SANS LICENCE", "LICENCES A FORMALISER"];
+    const filteredData = data.filter(row => {
+      const name = row['Nom, prénom']?.trim();
+      return name && !excludedValues.includes(name);
+    }).map(row => {
+      Object.keys(row).forEach(key => {
+        if (typeof row[key] === 'string') {
+          row[key] = row[key].trim();
+        }
+      });
+      return row;
     });
 
-    // Initialisation des tableaux pour stocker les membres, employés, erreurs, avertissements, etc.
-    const members = [];
-    const employees = [];
-    const errors = [];
-    const warnings = [];
-    const successfulImports = { members: [], employees: [] };
-    const noLicenseMembers = [];
-    const duplicateLicenseNumbers = new Map();
+    // Vérification si des données valides existent après le filtrage
+    if (filteredData.length === 0) {
+      return res.status(400).json({ message: "Aucune donnée valide trouvée dans le fichier" });
+    }
 
-    // Taille du lot pour le traitement par lots
-    const batchSize = 100;
-    const totalBatches = Math.ceil(data.length / batchSize);
-
-    // Récupération de tous les numéros de licence existants
-    const existingLicenseNumbers = new Set((await Member.find().distinct('licenseNumber')).map(ln => ln.toString()));
-
-    // Identification des numéros de licence en double dans les données à importer
-    const licenseNumberCounts = new Map();
-    data.forEach(row => {
+    // Gestion des doublons de licence
+    const licenseDuplicates = new Map();
+    filteredData.forEach((row) => {
       const licenseNumber = row['Numéro licence'];
       if (licenseNumber) {
-        licenseNumberCounts.set(licenseNumber, (licenseNumberCounts.get(licenseNumber) || 0) + 1);
-        if (licenseNumberCounts.get(licenseNumber) === 2) {
-          duplicateLicenseNumbers.set(licenseNumber, []);
+        if (!licenseDuplicates.has(licenseNumber)) {
+          licenseDuplicates.set(licenseNumber, []);
         }
+        licenseDuplicates.get(licenseNumber).push(row);
       }
     });
 
-    // Récupération de tous les employés existants
-    const existingEmployees = await Employee.find();
-
-    // Traitement des données par lots
-    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-      const batch = data.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
-      for (const row of batch) {
-        try {
-          const licenseType = row['Type licence']?.trim().toLowerCase() || '';
-
-          if (licenseType === 'libre' || !licenseType) {
-            // Traitement des membres
-            const result = await processMember(
-              row,
-              existingLicenseNumbers,
-              logger,
-              noLicenseLogger,
-              duplicateLicenseNumbers,
-              errorLogger,
-              warningLogger,
-              defaultValueLogger
-            );
-
-            if (result.noLicense) {
-              noLicenseMembers.push({ firstName: result.firstName, lastName: result.lastName });
-              continue;
-            }
-
-            if (result.skip) {
-              if (result.duplicate && duplicateLicenseNumbers.has(result.licenseNumber)) {
-                duplicateLicenseNumbers.get(result.licenseNumber).push({
-                  firstName: result.firstName,
-                  lastName: result.lastName
-                });
-                continue;
-              }
-            }
-
-            if (!result.skip) {
-              members.push(result.member);
-              successfulImports.members.push(result.licenseNumber);
-              existingLicenseNumbers.add(result.licenseNumber);
-            }
-          } else {
-            // Traitement des employés
-            const result = await processEmployee(
-              row,
-              existingEmployees,
-              logger,
-              errorLogger,
-              warningLogger,
-              defaultValueLogger
-            );
-
-            if (!result.skip) {
-              employees.push(result.employee);
-              successfulImports.employees.push(result.email);
-              existingEmployees.push(result.employee);
-            }
+    // Marquage des doublons de licence
+    licenseDuplicates.forEach((rows, licenseNumber) => {
+      if (rows.length > 1) {
+        rows.forEach((row, index) => {
+          if (index > 0) {
+            row['Numéro licence'] = `${licenseNumber}_DUPLICATE_${index}`;
+            row.comments = row.comments || [];
+            row.comments.push(`Numéro de licence dupliqué modifié : ${row['Numéro licence']}`);
           }
-        } catch (error) {
-          // Logging des erreurs
-          errorLogger.error(`Erreur lors du traitement de la ligne: ${JSON.stringify(row)}`, error);
-          errors.push({
-            error: error.message,
-            rawData: row
-          });
+        });
+      }
+    });
+
+    const members = [];
+    const employees = [];
+    const successfulImports = { members: [], employees: [] };
+
+    // Traitement des données ligne par ligne
+    const promises = filteredData.map(async (row) => {
+      row['Mobile personnel'] = normalizePhoneNumber(row['Mobile personnel']);
+      const licenseType = (row['Type licence']?.trim() || '').toLowerCase();
+
+      try {
+        if (['libre', '', null].includes(licenseType)) {
+          const result = await processMember(row);
+          if (result?.member) {
+            members.push(result.member);
+            successfulImports.members.push(result.licenseNumber);
+          }
+        } else {
+          const result = await processEmployee(row);
+          if (result?.employee) {
+            employees.push(result.employee);
+            successfulImports.employees.push(result.email);
+          }
         }
+      } catch (error) {
+        console.error("Erreur lors du traitement d'une ligne:", error);
       }
-      // Logging de la progression
-      logger.info(`Traitement du lot ${batchIndex + 1}/${totalBatches} terminé`);
-    }
+    });
 
-    // Insertion des membres dans la base de données
-    if (members.length > 0) {
-      await Member.insertMany(members);
-      logger.info(`${members.length} membres importés avec succès`);
-    }
+    await Promise.all(promises);
 
-    // Résumé de l'importation
-    const summary = {
-      total: data.length,
-      members: {
-        success: members.length,
-        errors: errors.length,
-        noLicense: noLicenseMembers.length,
-        duplicateLicenseNumbers: duplicateLicenseNumbers.size
-      },
-      employees: {
-        success: employees.length,
-        errors: errors.filter(e => e.rawData['Type licence']?.trim().toLowerCase() !== 'libre').length
-      }
-    };
+    // Récupération des numéros de licence existants
+    const existingMemberLicenses = new Set(
+      (await Member.find({}, { licenseNumber: 1 }).lean()).map(m => m.licenseNumber)
+    );
+    const existingEmployeeLicenses = new Set(
+      (await Employee.find({}, { licenseNumber: 1 }).lean()).map(e => e.licenseNumber)
+    );
 
-    // Logging de la fin de l'importation
-    logger.info('Importation terminée', { summary });
+    // Filtrage des entrées déjà existantes
+    const membersToInsert = members.filter(member => !existingMemberLicenses.has(member.licenseNumber));
+    const employeesToInsert = employees.filter(employee => !existingEmployeeLicenses.has(employee.licenseNumber));
 
-    // Log des numéros de licence en double
-    if (duplicateLicenseNumbers.size > 0) {
-      const duplicateEntries = Array.from(duplicateLicenseNumbers.entries()).map(([licenseNumber, members]) => ({
-        licenseNumber,
-        members
-      }));
-      duplicateLicenseLogger.info('Numéros de licence en double trouvés:', { duplicateEntries });
-    }
+    // Insertion des nouvelles entrées dans la base de données
+    if (membersToInsert.length > 0) await Member.insertMany(membersToInsert);
+    if (employeesToInsert.length > 0) await Employee.insertMany(employeesToInsert);
 
-    // Réponse HTTP avec le résumé de l'importation
+    // Réponse avec un résumé de l'importation
     res.status(200).json({
       message: 'Importation terminée',
-      summary
+      summary: {
+        members: { total: members.length, successful: membersToInsert.length },
+        employees: { total: employees.length, successful: employeesToInsert.length }
+      }
     });
-
   } catch (error) {
-    // Logging des erreurs d'importation
-    errorLogger.error('Échec de l\'importation', error);
-    res.status(500).json({
-      message: "Erreur lors de l'importation",
-      error: error.message
-    });
+    next(error);
   }
 };
 
-// Exportation de la fonction importMembers
-module.exports = {
-  importMembers
+// Récupération des entrées avec des commentaires
+exports.getEntriesWithComments = async (req, res, next) => {
+  try {
+    // Recherche des membres et employés ayant des commentaires
+    const membersWithComments = await Member.find({ comments: { $ne: [] } });
+    const employeesWithComments = await Employee.find({ comments: { $ne: [] } });
+
+    // Réponse avec les entrées trouvées
+    res.status(200).json({ members: membersWithComments, employees: employeesWithComments });
+  } catch (error) {
+    next(error);
+  }
 };

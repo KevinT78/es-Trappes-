@@ -7,9 +7,10 @@ const SalarySchema = new mongoose.Schema({
 });
 
 const EmployeeSchema = new mongoose.Schema({
-  licenseNumber: { type: String, required: true, unique: true },
+  licenseNumber: { type: String, required: true, unique: true},
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
+  phone: { type: String, required: true },
   email: { type: String, required: true },
   gender: { type: String, enum: ['M', 'F'] },
   positions: [{ type: String, required: true }],
@@ -19,6 +20,7 @@ const EmployeeSchema = new mongoose.Schema({
   paymentHistory: [SalarySchema],
   birthDate: { type: String, required: true },
   age: { type: Number, required: true },
+  comments: { type: [String] },
 });
 
 module.exports = mongoose.model('Employee', EmployeeSchema);
