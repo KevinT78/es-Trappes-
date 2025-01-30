@@ -1,6 +1,6 @@
 const moment = require('moment');
-const Member = require('./models/Member');
-const Employee = require('./models/Employee');
+const Member = require('../models/Member');
+const Employee = require('../models/Employee');
 
 // Fonction pour actualiser l'âge
 const updateAges = async () => {

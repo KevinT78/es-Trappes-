@@ -8,7 +8,7 @@ const connectDB = require('./utils/db');
 const errorHandler = require('./middlewares/errorHandler');
 
 const cron = require('node-cron');
-const updateAges = require('./updateAges');
+const updateAges = require('./utils/updateAges');
 
 
 // Initialiser une instance d'Express
