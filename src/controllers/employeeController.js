@@ -1,10 +1,19 @@
 const Employee = require('../models/Employee');
-const {sendSalaryPaymentConfirmation} = require('../utils/emailService');
+const { sendSalaryPaymentConfirmation } = require('../utils/emailService');
+const mongoose = require('mongoose');
 
-// // Ajouter un paiement de salaire
+// Ajouter un paiement de salaire
 exports.addSalaryPayment = async (req, res, next) => {
   try {
     const { employeeId, hoursWorked } = req.body; // Extraire l'ID de l'employé et le nombre d'heures travaillées du corps de la requête
+
+    // Validation de l'ID de l'employé
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      const error = new Error('Invalid employee ID');
+      error.status = 400;
+      throw error;
+    }
+
     const employee = await Employee.findById(employeeId); // Récupérer l'employé par son ID
 
     // Vérifier si l'employé existe
@@ -15,8 +24,8 @@ exports.addSalaryPayment = async (req, res, next) => {
     }
 
     // Vérification des champs nécessaires dans le document de l'employé
-    if (!employee.salary || !employee.salaryType) {
-      const error = new Error('Employee salary or salary type is missing');
+    if (!employee.salaryType) {
+      const error = new Error('Employee salary type is missing');
       error.status = 400;
       throw error;
     }
@@ -39,10 +48,10 @@ exports.addSalaryPayment = async (req, res, next) => {
         throw error;
       }
 
-      amount = employee.salary * hoursWorked; // Calculer le montant total pour le salaire horaire
+      amount = employee.hourlyRate * hoursWorked; // Calculer le montant total pour le salaire horaire
       payment.hoursWorked = hoursWorked; // Ajouter le nombre d'heures travaillées
     } else if (employee.salaryType === 'Mensuel') {
-      amount = employee.salary; // Utiliser le salaire mensuel directement
+      amount = employee.monthlySalary; // Utiliser le salaire mensuel directement
     } else {
       const error = new Error('Invalid salary type');
       error.status = 400;
@@ -54,8 +63,8 @@ exports.addSalaryPayment = async (req, res, next) => {
     employee.salaryHistory.push(payment); // Ajouter le paiement à l'historique des paiements de l'employé
     await employee.save(); // Sauvegarder les modifications dans la base de données
 
-    // // Envoyer l'email de confirmation de paiement de salaire
-    // await sendSalaryPaymentConfirmation(employee, payment);
+    // Envoyer l'email de confirmation de paiement de salaire
+    await sendSalaryPaymentConfirmation(employee, payment);
 
     res.status(200).json(employee); // Répondre avec l'employé mis à jour
   } catch (error) {
@@ -63,11 +72,18 @@ exports.addSalaryPayment = async (req, res, next) => {
   }
 };
 
-
 // Récupérer l'historique des paiements
 exports.getSalaryHistory = async (req, res, next) => {
   try {
     const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
+
+    // Validation de l'ID de l'employé
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      const error = new Error('Invalid employee ID');
+      error.status = 400;
+      throw error;
+    }
+
     const employee = await Employee.findById(employeeId); // Récupérer l'employé par son ID
     if (!employee) {
       const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
@@ -80,7 +96,7 @@ exports.getSalaryHistory = async (req, res, next) => {
   }
 };
 
-// Récupérer tous les employés avec differents filtres
+// Récupérer tous les employés avec différents filtres
 exports.getAllEmployees = async (req, res, next) => {
   try {
     const { licenseNumber, firstName, lastName, contractStatus, positions } = req.query; // Extraire les paramètres de requête
@@ -99,10 +115,19 @@ exports.getAllEmployees = async (req, res, next) => {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
+
 // Récupérer un employé par ID
 exports.getEmployeeById = async (req, res, next) => {
   try {
     const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
+
+    // Validation de l'ID de l'employé
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      const error = new Error('Invalid employee ID');
+      error.status = 400;
+      throw error;
+    }
+
     const employee = await Employee.findById(employeeId); // Récupérer l'employé par son ID
     if (!employee) {
       const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
@@ -118,6 +143,15 @@ exports.getEmployeeById = async (req, res, next) => {
 // Créer un nouvel employé
 exports.createEmployee = async (req, res, next) => {
   try {
+    const { monthlySalary, hourlyRate } = req.body;
+
+    // Vérification de la présence de monthlySalary ou hourlyRate
+    if (monthlySalary === undefined && hourlyRate === undefined) {
+      const error = new Error('Either monthlySalary or hourlyRate is required');
+      error.status = 400;
+      throw error;
+    }
+
     const employee = new Employee(req.body); // Créer une nouvelle instance d'Employee avec les données du corps de la requête
     await employee.save(); // Sauvegarder l'employé dans la base de données
     res.status(201).json(employee); // Répondre avec l'employé créé
@@ -130,6 +164,14 @@ exports.createEmployee = async (req, res, next) => {
 exports.updateEmployee = async (req, res, next) => {
   try {
     const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
+
+    // Validation de l'ID de l'employé
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      const error = new Error('Invalid employee ID');
+      error.status = 400;
+      throw error;
+    }
+
     const employee = await Employee.findByIdAndUpdate(employeeId, req.body, { new: true }); // Mettre à jour les données de l'employé avec les nouvelles données du corps de la requête
     if (!employee) {
       const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
@@ -146,6 +188,14 @@ exports.updateEmployee = async (req, res, next) => {
 exports.deleteEmployee = async (req, res, next) => {
   try {
     const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
+
+    // Validation de l'ID de l'employé
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      const error = new Error('Invalid employee ID');
+      error.status = 400;
+      throw error;
+    }
+
     const employee = await Employee.findByIdAndDelete(employeeId); // Supprimer l'employé par son ID
     if (!employee) {
       const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
