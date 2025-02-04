@@ -55,7 +55,7 @@ exports.addSalaryPayment = async (req, res, next) => {
     await employee.save(); // Sauvegarder les modifications dans la base de données
 
     // // Envoyer l'email de confirmation de paiement de salaire
-    await sendSalaryPaymentConfirmation(employee, payment);
+    // await sendSalaryPaymentConfirmation(employee, payment);
 
     res.status(200).json(employee); // Répondre avec l'employé mis à jour
   } catch (error) {
@@ -80,16 +80,25 @@ exports.getSalaryHistory = async (req, res, next) => {
   }
 };
 
-// Récupérer tous les employés
+// Récupérer tous les employés avec differents filtres
 exports.getAllEmployees = async (req, res, next) => {
   try {
-    const employees = await Employee.find().select('firstName lastName licenseNumber'); // Récupérer tous les employés de la base de données
-    res.status(200).json(employees); // Répondre avec la liste des employés
+    const { licenseNumber, firstName, lastName, contractStatus, positions } = req.query; // Extraire les paramètres de requête
+
+    // Construire l'objet de filtre
+    const filter = {};
+    if (licenseNumber) filter.licenseNumber = licenseNumber;
+    if (firstName) filter.firstName = { $regex: firstName, $options: 'i' }; // Recherche insensible à la casse
+    if (lastName) filter.lastName = { $regex: lastName, $options: 'i' }; // Recherche insensible à la casse
+    if (contractStatus) filter.contractStatus = contractStatus;
+    if (positions) filter.positions = { $in: positions.split(',') }; // Filtrer par positions
+
+    const employees = await Employee.find(filter).select('firstName lastName licenseNumber positions'); // Récupérer les employés filtrés
+    res.status(200).json(employees); // Répondre avec la liste des employés filtrés
   } catch (error) {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
-
 // Récupérer un employé par ID
 exports.getEmployeeById = async (req, res, next) => {
   try {
