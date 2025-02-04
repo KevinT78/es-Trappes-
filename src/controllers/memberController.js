@@ -15,12 +15,23 @@ exports.createMember = async (req, res, next) => {
 // Obtenir tous les membres
 exports.getAllMembers = async (req, res, next) => {
   try {
-    const members = await Member.find(); // Récupérer tous les membres de la base de données
-    res.json(members); // Répondre avec la liste des membres
+    // Récupérer les filtres depuis la requête
+    const { paymentStatus, category, age, active } = req.query;
+
+    const filter = {};
+    
+    if (paymentStatus) filter.paymentStatus = paymentStatus;
+    if (category) filter.category = category;
+    if (age) filter.age = age;
+    if (active !== undefined) filter.active = active === 'true';
+
+    const members = await Member.find(filter).select('firstName lastName licenseNumber'); // Utilisation des filtres dans la requête
+    res.json(members);
   } catch (error) {
-    next(error); // Passer l'erreur au middleware de gestion des erreurs
+    next(error);
   }
 };
+
 
 // Obtenir un membre par son ID
 exports.getMemberById = async (req, res, next) => {
@@ -37,14 +48,19 @@ exports.getMemberById = async (req, res, next) => {
   }
 };
 
-// // Mettre à jour un membre
+// Mettre à jour un membre
 exports.updateMember = async (req, res, next) => {
   try {
-    const member = await Member.findById(req.params.id); // Récupérer le membre par son ID
+    let member = await Member.findById(req.params.id); // Récupérer le membre par son ID
     if (!member) {
       const error = new Error('Member not found');
       error.status = 404;
       throw error;
+    }
+
+    // Vérifier si totalDue est dans la requête et l'ajouter à la valeur existante
+    if (req.body.totalDue !== undefined) {
+      req.body.totalDue += member.totalDue;
     }
 
     // Mettre à jour les données du membre avec les nouvelles données du corps de la requête
@@ -154,4 +170,54 @@ exports.sendPaymentReminders = async (req, res, next) => {
 
 
 
+// Mettre à jour plusieurs membres
+exports.updateMultipleMembers = async (req, res, next) => {
+  try {
+    const { memberIds, updateData } = req.body;
 
+    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+      return res.status(400).json({ message: 'Invalid or empty memberIds array' });
+    }
+
+    console.log('Member IDs to update:', memberIds);
+    console.log('Update data:', updateData);
+
+    // Recupérer tous les membres qui doivent être mis à jour
+    const members = await Member.find({ _id: { $in: memberIds } });
+
+    if (members.length === 0) {
+      return res.status(404).json({ message: 'No members found with the provided IDs' });
+    }
+
+    // Mise à jour individuelle de chaque membre
+    for (const member of members) {
+      // Clonage de updateData pour éviter de modifier l'objet original
+      const memberUpdateData = { ...updateData };
+
+      if (memberUpdateData.totalDue !== undefined) {
+        memberUpdateData.totalDue += member.totalDue;
+      }
+
+      // Appliquer les données de mise à jour
+      Object.assign(member, memberUpdateData);
+
+      // Mise à jour de  paymentStatus
+      if (member.totalPaid >= member.totalDue) {
+        const excess = member.totalPaid - member.totalDue;
+        member.totalPaid = excess;
+        member.totalDue = 0;
+        member.paymentStatus = 'paid';
+      } else if (member.totalPaid > 0) {
+        member.paymentStatus = 'partial';
+      } else {
+        member.paymentStatus = 'unpaid';
+      }
+
+      await member.save();
+    }
+
+    res.json({ message: 'Members updated successfully', modifiedCount: members.length });
+  } catch (error) {
+    next(error);
+  }
+};

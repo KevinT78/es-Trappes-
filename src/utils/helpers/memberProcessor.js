@@ -20,7 +20,7 @@ const generateDefaultValues = (firstName, lastName, row, comments) => {
     birthDate = moment(birthDate, 'DD/MM/YYYY').format('DD/MM/YYYY');
     age = moment().diff(moment(birthDate, 'DD/MM/YYYY'), 'years');
   } else {
-    comments.push('Date de naissance invalide ou manquante. Une date par défaut a été appliquée.');
+    comments.push('Date de naissance invalide ou manquante.');
   }
 
   // Normalisation du numéro de téléphone

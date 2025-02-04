@@ -1,37 +1,60 @@
 const Employee = require('../models/Employee');
 const {sendSalaryPaymentConfirmation} = require('../utils/emailService');
 
-// Ajouter un paiement de salaire
+// // Ajouter un paiement de salaire
 exports.addSalaryPayment = async (req, res, next) => {
   try {
     const { employeeId, hoursWorked } = req.body; // Extraire l'ID de l'employé et le nombre d'heures travaillées du corps de la requête
     const employee = await Employee.findById(employeeId); // Récupérer l'employé par son ID
+
+    // Vérifier si l'employé existe
     if (!employee) {
       const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
       error.status = 404;
       throw error;
     }
 
+    // Vérification des champs nécessaires dans le document de l'employé
+    if (!employee.salary || !employee.salaryType) {
+      const error = new Error('Employee salary or salary type is missing');
+      error.status = 400;
+      throw error;
+    }
+
+    // Vérification du type de salaire de l'employé
     let amount;
     const payment = { date: new Date() };
 
     if (employee.salaryType === 'Horaire') {
+      // Vérifier que le nombre d'heures travaillées est fourni
       if (hoursWorked === undefined) {
         const error = new Error('Hours worked is required for hourly salary type');
         error.status = 400;
         throw error;
       }
+      // Vérifier que le nombre d'heures est un nombre positif
+      if (hoursWorked <= 0) {
+        const error = new Error('Hours worked must be a positive number');
+        error.status = 400;
+        throw error;
+      }
+
       amount = employee.salary * hoursWorked; // Calculer le montant total pour le salaire horaire
       payment.hoursWorked = hoursWorked; // Ajouter le nombre d'heures travaillées
-    } else {
+    } else if (employee.salaryType === 'Mensuel') {
       amount = employee.salary; // Utiliser le salaire mensuel directement
+    } else {
+      const error = new Error('Invalid salary type');
+      error.status = 400;
+      throw error;
     }
 
+    // Ajouter le montant calculé au paiement
     payment.amount = amount;
-    employee.paymentHistory.push(payment); // Ajouter le paiement à l'historique des paiements de l'employé
+    employee.salaryHistory.push(payment); // Ajouter le paiement à l'historique des paiements de l'employé
     await employee.save(); // Sauvegarder les modifications dans la base de données
 
-    // Envoyer l'email de confirmation de paiement de salaire
+    // // Envoyer l'email de confirmation de paiement de salaire
     await sendSalaryPaymentConfirmation(employee, payment);
 
     res.status(200).json(employee); // Répondre avec l'employé mis à jour
@@ -39,6 +62,7 @@ exports.addSalaryPayment = async (req, res, next) => {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
+
 
 // Récupérer l'historique des paiements
 exports.getSalaryHistory = async (req, res, next) => {
@@ -50,7 +74,7 @@ exports.getSalaryHistory = async (req, res, next) => {
       error.status = 404;
       throw error;
     }
-    res.status(200).json(employee.paymentHistory); // Répondre avec l'historique des paiements de l'employé
+    res.status(200).json(employee.salaryHistory); // Répondre avec l'historique des paiements de l'employé
   } catch (error) {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
@@ -59,7 +83,7 @@ exports.getSalaryHistory = async (req, res, next) => {
 // Récupérer tous les employés
 exports.getAllEmployees = async (req, res, next) => {
   try {
-    const employees = await Employee.find(); // Récupérer tous les employés de la base de données
+    const employees = await Employee.find().select('firstName lastName licenseNumber'); // Récupérer tous les employés de la base de données
     res.status(200).json(employees); // Répondre avec la liste des employés
   } catch (error) {
     next(error); // Passer l'erreur au middleware de gestion des erreurs

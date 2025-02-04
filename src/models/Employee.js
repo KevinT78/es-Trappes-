@@ -17,7 +17,7 @@ const EmployeeSchema = new mongoose.Schema({
   contractStatus: { type: String, enum: ['CDI', 'CDD', 'Indépendant'] },
   salary: { type: Number, required: false },
   salaryType: { type: String, enum: ['Mensuel', 'Horaire'] },
-  paymentHistory: [SalarySchema],
+  salaryHistory: [SalarySchema],
   birthDate: { type: String, required: true },
   age: { type: Number, required: true },
   comments: { type: [String] },

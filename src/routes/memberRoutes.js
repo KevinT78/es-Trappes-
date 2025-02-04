@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const memberController = require('../controllers/memberController');
 
+// Route pour mettre à jour des membres par leur ID
+router.put('/update-multiple', memberController.updateMultipleMembers);
+
 // Route pour créer un nouveau membre
 router.post('/', memberController.createMember);
 
@@ -22,5 +25,7 @@ router.post('/:id/payment', memberController.addPayment);
 
 // Route pour envoyer des rappels de paiement à tous les membres concernés
 router.post('/send-payment-reminders', memberController.sendPaymentReminders);
+
+
 
 module.exports = router;
