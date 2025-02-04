@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const moment = require('moment');
+const calculateAge = require('../utils/helpers/calculateAge');
 
 
 const paymentHistorySchema = new mongoose.Schema({
@@ -59,14 +60,7 @@ const memberSchema = new mongoose.Schema({
 
 // Middleware pré-sauvegarde pour calculer l'âge
 memberSchema.pre('save', function (next) {
-  if (this.birthDate) {
-    const birthDate = moment(this.birthDate, 'DD/MM/YYYY', true);
-    if (birthDate.isValid()) {
-      this.age = moment().diff(birthDate, 'years');
-    } else {
-      console.warn(`Format de date invalide pour le membre ID: ${this._id}, Date: ${this.birthDate}`);
-    }
-  }
+  this.age = calculateAge(this.birthDate);
   next();
 });
 

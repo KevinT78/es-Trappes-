@@ -3,6 +3,7 @@ const Member = require('../../models/Member');
 const extractNameParts = require('./nameExtractor');
 const getCategoryAndGender = require('./categoryGenderHelper');
 const { normalizePhoneNumber } = require('./phoneHelper');
+const calculateAge = require('./calculateAge');
 
 // Génère des valeurs par défaut pour un membre
 const generateDefaultValues = (firstName, lastName, row, comments) => {
@@ -13,15 +14,16 @@ const generateDefaultValues = (firstName, lastName, row, comments) => {
   }
 
   let birthDate = row['Né(e) le'];
-  let age = 0;
-
-  // Calcul de l'âge à partir de la date de naissance
-  if (birthDate && moment(birthDate, 'DD/MM/YYYY', true).isValid()) {
+   // Vérification et formatage de la date de naissance
+   if (birthDate && moment(birthDate, 'DD/MM/YYYY', true).isValid()) {
     birthDate = moment(birthDate, 'DD/MM/YYYY').format('DD/MM/YYYY');
-    age = moment().diff(moment(birthDate, 'DD/MM/YYYY'), 'years');
   } else {
+    birthDate = null;
     comments.push('Date de naissance invalide ou manquante.');
   }
+
+  // Calcul de l'âge à partir de la date de naissance
+  const age = calculateAge(birthDate);
 
   // Normalisation du numéro de téléphone
   const phone = normalizePhoneNumber(row['Mobile personnel']) || '00 00 00 00 00';

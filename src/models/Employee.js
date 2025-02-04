@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const moment = require('moment');
+const calculateAge = require('../utils/helpers/calculateAge');
 
 const SalarySchema = new mongoose.Schema({
   amount: { type: Number, required: true },
@@ -27,14 +28,7 @@ const EmployeeSchema = new mongoose.Schema({
 
 // Middleware pré-sauvegarde pour calculer l'âge
 EmployeeSchema.pre('save', function (next) {
-  if (this.birthDate) {
-    const birthDate = moment(this.birthDate, 'DD/MM/YYYY', true);
-    if (birthDate.isValid()) {
-      this.age = moment().diff(birthDate, 'years');
-    } else {
-      console.warn(`Format de date invalide pour l'employé ID: ${this._id}, Date: ${this.birthDate}`);
-    }
-  }
+  this.age = calculateAge(this.birthDate);
   next();
 });
 

@@ -2,6 +2,7 @@ const moment = require('moment');
 const Employee = require('../../models/Employee');
 const extractNameParts = require('./nameExtractor');
 const { normalizePhoneNumber } = require('./phoneHelper');
+const calculateAge = require('./calculateAge');
 
 // Génère des valeurs par défaut pour un employé
 const generateDefaultValuesForEmployee = (firstName, lastName, row, comments) => {
@@ -12,15 +13,16 @@ const generateDefaultValuesForEmployee = (firstName, lastName, row, comments) =>
   }
 
   let birthDate = row['Né(e) le'];
-  let age = 0;
-
-  // Calcul de l'âge à partir de la date de naissance
+  // Vérification et formatage de la date de naissance
   if (birthDate && moment(birthDate, 'DD/MM/YYYY', true).isValid()) {
     birthDate = moment(birthDate, 'DD/MM/YYYY').format('DD/MM/YYYY');
-    age = moment().diff(moment(birthDate, 'DD/MM/YYYY'), 'years');
   } else {
-    comments.push('Date de naissance invalide ou manquante. Une date par défaut a été appliquée.');
+    birthDate = null;
+    comments.push('Date de naissance invalide ou manquante.');
   }
+
+  // Calcul de l'âge à partir de la date de naissance
+  const age = calculateAge(birthDate);
 
   // Normalisation du numéro de téléphone
   const phone = normalizePhoneNumber(row['Mobile personnel']) || '00 00 00 00 00';
