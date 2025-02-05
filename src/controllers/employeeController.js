@@ -143,24 +143,41 @@ exports.getEmployeeById = async (req, res, next) => {
 // Créer un nouvel employé
 exports.createEmployee = async (req, res, next) => {
   try {
-    const { monthlySalary, hourlyRate } = req.body;
+    const { licenseNumber, firstName, lastName, email, phone, birthDate, gender, positions, contractStatus, salaryType, hourlyRate } = req.body;
 
-    // Vérification de la présence de monthlySalary ou hourlyRate
-    if (monthlySalary === undefined && hourlyRate === undefined) {
-      const error = new Error('Either monthlySalary or hourlyRate is required');
+    // Valider la présence des champs requis
+    if (!licenseNumber || !firstName || !lastName || !email || !phone || !birthDate || !gender || !positions || !contractStatus || !salaryType || (salaryType === 'Horaire' && !hourlyRate)) {
+      const error = new Error('Missing required fields');
       error.status = 400;
       throw error;
     }
 
-    const employee = new Employee(req.body); // Créer une nouvelle instance d'Employee avec les données du corps de la requête
-    await employee.save(); // Sauvegarder l'employé dans la base de données
-    res.status(201).json(employee); // Répondre avec l'employé créé
+    // Créer un nouvel employé avec les champs spécifiés
+    const employee = new Employee({
+      licenseNumber,
+      firstName,
+      lastName,
+      email,
+      phone,
+      birthDate,
+      gender,
+      positions,
+      contractStatus,
+      salaryType,
+      hourlyRate, // Sera utilisé uniquement si salaryType est 'Horaire'
+    });
+
+    // Sauvegarder l'employé dans la base de données
+    await employee.save();
+    
+    // Répondre avec l'employé créé
+    res.status(201).json(employee);
   } catch (error) {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
 
-// Mettre à jour un employé
+// Mettre à jour un employé avec des champs limités
 exports.updateEmployee = async (req, res, next) => {
   try {
     const { employeeId } = req.params; // Extraire l'ID de l'employé des paramètres de la requête
@@ -172,13 +189,32 @@ exports.updateEmployee = async (req, res, next) => {
       throw error;
     }
 
-    const employee = await Employee.findByIdAndUpdate(employeeId, req.body, { new: true }); // Mettre à jour les données de l'employé avec les nouvelles données du corps de la requête
+    // Extraire uniquement les champs autorisés du corps de la requête
+    const { phone, email, positions, contractStatus, monthlySalary, hourlyRate, salaryType } = req.body;
+
+    // Créer un objet de mise à jour avec les champs autorisés
+    const updateFields = {};
+
+    if (phone) updateFields.phone = phone;
+    if (email) updateFields.email = email;
+    if (positions) updateFields.positions = positions;
+    if (contractStatus) updateFields.contractStatus = contractStatus;
+    if (monthlySalary) updateFields.monthlySalary = monthlySalary;
+    if (hourlyRate) updateFields.hourlyRate = hourlyRate;
+    if (salaryType) updateFields.salaryType = salaryType;
+
+    // Mettre à jour l'employé avec les champs spécifiés
+    const employee = await Employee.findByIdAndUpdate(employeeId, updateFields, { new: true });
+
+    // Vérifier si l'employé existe après la mise à jour
     if (!employee) {
-      const error = new Error('Employee not found'); // Créer une nouvelle erreur si l'employé n'est pas trouvé
+      const error = new Error('Employee not found');
       error.status = 404;
       throw error;
     }
-    res.status(200).json(employee); // Répondre avec l'employé mis à jour
+
+    // Répondre avec l'employé mis à jour
+    res.status(200).json(employee);
   } catch (error) {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
