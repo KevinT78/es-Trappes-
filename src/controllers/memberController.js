@@ -36,7 +36,16 @@ exports.getAllMembers = async (req, res, next) => {
 // Obtenir un membre par son ID
 exports.getMemberById = async (req, res, next) => {
   try {
-    const member = await Member.findById(req.params.id); // Récupérer le membre par son ID
+    const { id } = req.params; // Extraire l'ID du membre des paramètres de la requête
+
+    // Validation de l'ID du membre
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const error = new Error('Invalid member ID');
+      error.status = 400;
+      throw error;
+    }
+
+    const member = await Member.findById(id); // Récupérer le membre par son ID
     if (!member) {
       const error = new Error('Member not found');
       error.status = 404;
@@ -51,7 +60,16 @@ exports.getMemberById = async (req, res, next) => {
 // Mettre à jour un membre
 exports.updateMember = async (req, res, next) => {
   try {
-    let member = await Member.findById(req.params.id); // Récupérer le membre par son ID
+    const { id } = req.params; // Extraire l'ID du membre des paramètres de la requête
+
+    // Validation de l'ID du membre
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const error = new Error('Invalid member ID');
+      error.status = 400;
+      throw error;
+    }
+
+    let member = await Member.findById(id); // Récupérer le membre par son ID
     if (!member) {
       const error = new Error('Member not found');
       error.status = 404;
@@ -65,7 +83,7 @@ exports.updateMember = async (req, res, next) => {
 
     // Mettre à jour les données du membre avec les nouvelles données du corps de la requête
     const updatedMember = await Member.findByIdAndUpdate(
-      req.params.id,
+      id,
       { ...req.body, updatedAt: Date.now() },
       { new: true, runValidators: true }
     );
@@ -100,7 +118,16 @@ exports.updateMember = async (req, res, next) => {
 // Supprimer un membre
 exports.deleteMember = async (req, res, next) => {
   try {
-    const member = await Member.findByIdAndDelete(req.params.id); // Supprimer le membre par son ID
+    const { id } = req.params; // Extraire l'ID du membre des paramètres de la requête
+
+    // Validation de l'ID du membre
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const error = new Error('Invalid member ID');
+      error.status = 400;
+      throw error;
+    }
+
+    const member = await Member.findByIdAndDelete(id); // Supprimer le membre par son ID
     if (!member) {
       const error = new Error('Member not found');
       error.status = 404;
@@ -115,7 +142,16 @@ exports.deleteMember = async (req, res, next) => {
 // Ajouter un paiement à un membre
 exports.addPayment = async (req, res, next) => {
   try {
-    const member = await Member.findById(req.params.id); // Récupérer le membre par son ID
+    const { id } = req.params; // Extraire l'ID du membre des paramètres de la requête
+
+    // Validation de l'ID du membre
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const error = new Error('Invalid member ID');
+      error.status = 400;
+      throw error;
+    }
+
+    const member = await Member.findById(id); // Récupérer le membre par son ID
     if (!member) {
       const error = new Error('Member not found');
       error.status = 404;
@@ -175,14 +211,15 @@ exports.updateMultipleMembers = async (req, res, next) => {
   try {
     const { memberIds, updateData } = req.body;
 
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+    // Validation des IDs des membres
+    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0 || memberIds.some(id => !mongoose.Types.ObjectId.isValid(id))) {
       return res.status(400).json({ message: 'Invalid or empty memberIds array' });
     }
 
     console.log('Member IDs to update:', memberIds);
     console.log('Update data:', updateData);
 
-    // Recupérer tous les membres qui doivent être mis à jour
+    // Récupérer tous les membres qui doivent être mis à jour
     const members = await Member.find({ _id: { $in: memberIds } });
 
     if (members.length === 0) {
@@ -201,7 +238,7 @@ exports.updateMultipleMembers = async (req, res, next) => {
       // Appliquer les données de mise à jour
       Object.assign(member, memberUpdateData);
 
-      // Mise à jour de  paymentStatus
+      // Mise à jour de paymentStatus
       if (member.totalPaid >= member.totalDue) {
         const excess = member.totalPaid - member.totalDue;
         member.totalPaid = excess;
