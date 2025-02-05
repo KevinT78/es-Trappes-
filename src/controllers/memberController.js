@@ -63,13 +63,6 @@ exports.getMemberById = async (req, res, next) => {
   try {
     const { id } = req.params; // Extraire l'ID du membre des paramètres de la requête
 
-    // Validation de l'ID du membre
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      const error = new Error('Invalid member ID');
-      error.status = 400;
-      throw error;
-    }
-
     const member = await Member.findById(id); // Récupérer le membre par son ID
     if (!member) {
       const error = new Error('Member not found');
@@ -86,13 +79,6 @@ exports.getMemberById = async (req, res, next) => {
 exports.updateMember = async (req, res, next) => {
   try {
     const { id } = req.params; // Extraire l'ID du membre des paramètres de la requête
-
-    // Validation de l'ID du membre
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      const error = new Error('Invalid member ID');
-      error.status = 400;
-      throw error;
-    }
 
     let member = await Member.findById(id); // Récupérer le membre par son ID
     if (!member) {
@@ -155,13 +141,6 @@ exports.deleteMember = async (req, res, next) => {
   try {
     const { id } = req.params; // Extraire l'ID du membre des paramètres de la requête
 
-    // Validation de l'ID du membre
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      const error = new Error('Invalid member ID');
-      error.status = 400;
-      throw error;
-    }
-
     const member = await Member.findByIdAndDelete(id); // Supprimer le membre par son ID
     if (!member) {
       const error = new Error('Member not found');
@@ -178,13 +157,6 @@ exports.deleteMember = async (req, res, next) => {
 exports.addPayment = async (req, res, next) => {
   try {
     const { id } = req.params; // Extraire l'ID du membre des paramètres de la requête
-
-    // Validation de l'ID du membre
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      const error = new Error('Invalid member ID');
-      error.status = 400;
-      throw error;
-    }
 
     const member = await Member.findById(id); // Récupérer le membre par son ID
     if (!member) {
