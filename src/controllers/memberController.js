@@ -4,9 +4,34 @@ const { sendPaymentConfirmation, sendPaymentReminder } = require('../utils/email
 // Créer un nouveau membre
 exports.createMember = async (req, res, next) => {
   try {
-    const member = new Member(req.body); // Créer une nouvelle instance de Member avec les données du corps de la requête
-    await member.save(); // Sauvegarder le membre dans la base de données
-    res.status(201).json(member); // Répondre avec le membre créé
+    // Extraire les champs nécessaires du corps de la requête
+    const { licenseNumber, email, phone, firstName, lastName, gender, category, totalDue, birthDate } = req.body;
+
+    // Valider la présence de tous les champs requis
+    if (!licenseNumber || !email || !phone || !firstName || !lastName || !gender || !category || totalDue === undefined || !birthDate) {
+      const error = new Error('Missing required fields');
+      error.status = 400;
+      throw error;
+    }
+
+    // Créer un nouveau membre avec les champs extraits
+    const member = new Member({
+      licenseNumber,
+      email,
+      phone,
+      firstName,
+      lastName,
+      gender,
+      category,
+      totalDue,
+      birthDate
+    });
+
+    // Sauvegarder le membre dans la base de données
+    await member.save();
+    
+    // Répondre avec le membre créé
+    res.status(201).json(member);
   } catch (error) {
     next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
@@ -76,15 +101,25 @@ exports.updateMember = async (req, res, next) => {
       throw error;
     }
 
+    // Filtrer les champs permis pour la mise à jour
+    const allowedUpdates = ['licenseNumber', 'phone', 'email', 'category', 'totalDue', 'totalPaid', 'active'];
+    const updateData = {};
+
+    Object.keys(req.body).forEach((key) => {
+      if (allowedUpdates.includes(key)) {
+        updateData[key] = req.body[key]; // Ajouter seulement les champs permis
+      }
+    });
+
     // Vérifier si totalDue est dans la requête et l'ajouter à la valeur existante
-    if (req.body.totalDue !== undefined) {
-      req.body.totalDue += member.totalDue;
+    if (updateData.totalDue !== undefined) {
+      updateData.totalDue += member.totalDue;
     }
 
     // Mettre à jour les données du membre avec les nouvelles données du corps de la requête
     const updatedMember = await Member.findByIdAndUpdate(
       id,
-      { ...req.body, updatedAt: Date.now() },
+      { ...updateData, updatedAt: Date.now() },
       { new: true, runValidators: true }
     );
 
@@ -219,6 +254,16 @@ exports.updateMultipleMembers = async (req, res, next) => {
     console.log('Member IDs to update:', memberIds);
     console.log('Update data:', updateData);
 
+    // Filtrer les champs permis pour la mise à jour
+    const allowedUpdates = ['licenseNumber', 'phone', 'email', 'category', 'totalDue', 'totalPaid', 'active'];
+    const filteredUpdateData = {};
+
+    Object.keys(updateData).forEach((key) => {
+      if (allowedUpdates.includes(key)) {
+        filteredUpdateData[key] = updateData[key]; // Ajouter seulement les champs permis
+      }
+    });
+
     // Récupérer tous les membres qui doivent être mis à jour
     const members = await Member.find({ _id: { $in: memberIds } });
 
@@ -228,8 +273,8 @@ exports.updateMultipleMembers = async (req, res, next) => {
 
     // Mise à jour individuelle de chaque membre
     for (const member of members) {
-      // Clonage de updateData pour éviter de modifier l'objet original
-      const memberUpdateData = { ...updateData };
+      // Clonage de filteredUpdateData pour éviter de modifier l'objet original
+      const memberUpdateData = { ...filteredUpdateData };
 
       if (memberUpdateData.totalDue !== undefined) {
         memberUpdateData.totalDue += member.totalDue;
@@ -255,6 +300,6 @@ exports.updateMultipleMembers = async (req, res, next) => {
 
     res.json({ message: 'Members updated successfully', modifiedCount: members.length });
   } catch (error) {
-    next(error);
+    next(error); // Passer l'erreur au middleware de gestion des erreurs
   }
 };
