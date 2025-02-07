@@ -6,10 +6,9 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./utils/db');
 const errorHandler = require('./middlewares/errorHandler');
-
+const authenticateAdmin = require('./middlewares/authMiddleware');
 const cron = require('node-cron');
 const updateAges = require('./utils/updateAges');
-
 
 // Initialiser une instance d'Express
 const app = express();
@@ -19,10 +18,22 @@ app.use(cors()); // Activer CORS pour permettre les requêtes cross-origin
 app.use(express.json()); // Middleware pour parser les requêtes JSON
 app.use(express.urlencoded({ extended: true })); // Middleware pour parser les requêtes URL-encoded
 
-// Définir les routes de l'API
-app.use('/members', require('./routes/memberRoutes')); // Routes liées aux membres
-app.use('/employees', require('./routes/employeeRoutes')); // Routes liées aux employés
-app.use('/import', require('./routes/importRoutes')); // Routes liées aux imports
+// Route publique (ne nécessite pas d'authentification)
+app.use('/auth', require('./routes/authRoutes'));
+
+// Créer un router pour les routes protégées
+const protectedRouter = express.Router();
+
+// Appliquer le middleware d'authentification uniquement aux routes protégées
+protectedRouter.use(authenticateAdmin);
+
+// Définir les routes protégées
+protectedRouter.use('/members', require('./routes/memberRoutes'));
+protectedRouter.use('/employees', require('./routes/employeeRoutes'));
+protectedRouter.use('/import', require('./routes/importRoutes'));
+
+// Monter le router protégé sur l'application
+app.use('/', protectedRouter);
 
 // Middleware d'erreur global
 app.use(errorHandler);
@@ -38,6 +49,7 @@ cron.schedule('0 0 * * *', () => {
   console.log('Lancement de la mise à jour quotidienne des âges.');
   updateAges();
 });
+
 // Démarrer le serveur
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
