@@ -24,9 +24,9 @@ const RegistrationSchema = new mongoose.Schema({
         carteIdentite: String,
         justificatifDomicile: String,
         certificatMedical: String,
-        codePromo: String
     },
     droitImage: { type: String, enum: ['oui', 'non'] },
+    codePromo: { type: String } ,
     status: { type: String, enum: ['refusé', 'attente', 'accepté'], default: 'attente' }
 }, { timestamps: true });
 
