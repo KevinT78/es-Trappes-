@@ -16,6 +16,7 @@ exports.createRegistration = async (req, res, next) => {
       address,
       documents,
       droitImage,
+      codePromo, 
       status,
     } = req.body;
 
@@ -47,6 +48,7 @@ exports.createRegistration = async (req, res, next) => {
       address,
       documents,
       droitImage,
+      codePromo,
       status,
     });
 
