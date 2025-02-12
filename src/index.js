@@ -13,6 +13,9 @@ const updateAges = require('./utils/updateAges');
 // Initialiser une instance d'Express
 const app = express();
 
+// Route pour le paiement Stripe placer avant  express.json .
+app.use('/stripe', require('./routes/paymentRoutes')); 
+
 // Utiliser les middlewares
 app.use(cors()); // Activer CORS pour permettre les requêtes cross-origin
 app.use(express.json()); // Middleware pour parser les requêtes JSON
@@ -20,6 +23,10 @@ app.use(express.urlencoded({ extended: true })); // Middleware pour parser les r
 
 // Route publique (ne nécessite pas d'authentification)
 app.use('/auth', require('./routes/authRoutes'));
+
+// Route pour la page d'inscription
+app.use('/registration', require('./routes/registrationRoutes'));
+
 
 // Créer un router pour les routes protégées
 const protectedRouter = express.Router();

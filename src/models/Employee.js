@@ -14,7 +14,7 @@ const EmployeeSchema = new mongoose.Schema({
   lastName: { type: String, required: true },
   phone: { type: String, required: true },
   email: { type: String, required: true },
-  gender: { type: String, enum: ['M', 'F'] },
+  gender: { type: String, enum: ['M', 'F', 'Unknown'] },
   positions: [{ type: String, required: true }],
   contractStatus: { type: String, enum: ['CDI', 'CDD', 'Indépendant'] },
   monthlySalary: { type: Number, required: false },

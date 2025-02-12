@@ -15,7 +15,7 @@ const paymentHistorySchema = new mongoose.Schema({
 });
 
 const memberSchema = new mongoose.Schema({
-  licenseNumber: { type: String, required: true, unique: true},
+  licenseNumber: { type: String, required: true},
   email: { type: String, required: true },
   phone: { type: String, required: true },
   firstName: { type: String, required: true },
