@@ -15,7 +15,7 @@ exports.login = (req, res) => {
 
   if (username === adminUser.username && bcrypt.compareSync(password, adminUser.password)) {
     const token = jwt.sign({ userId: adminUser.username, role: adminUser.role }, SECRET_KEY, {
-      expiresIn: '1h'
+      expiresIn: '24h'
     });
 
     return res.json({ token });

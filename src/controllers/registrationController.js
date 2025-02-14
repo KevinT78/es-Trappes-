@@ -1,65 +1,90 @@
 const Registration = require("../models/Registration");
 
+// Fonction pour vérifier le type MIME d'un fichier base64
+function validateFileType(base64String) {
+  const validMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+  const mimeType = getMimeType(base64String);
+  return validMimeTypes.includes(mimeType);
+}
+
+// Fonction pour extraire le type MIME d'une chaîne base64
+function getMimeType(base64String) {
+  const matches = base64String.match(/^data:([a-zA-Z0-9/+]+);base64,/);
+  const mimeType = matches ? matches[1] : '';
+  console.log("Extracted MIME type:", mimeType); // Ajoutez ce log pour le débogage
+  return mimeType;
+}
+
 // Créer une nouvelle inscription
 exports.createRegistration = async (req, res, next) => {
-  try {
-    // Extraire les champs nécessaires du corps de la requête
+try {
+  const {
+    typeInscription,
+    firstName,
+    lastName,
+    birthDate,
+    gender,
+    contact,
+    tutor,
+    address,
+    documents,
+    droitImage,
+    status,
+  } = req.body;
 
-    const {
-      typeInscription,
-      firstName,
-      lastName,
-      birthDate,
-      gender,
-      contact,
-      tutor,
-      address,
-      documents,
-      droitImage,
-      codePromo, 
-      status,
-    } = req.body;
+  if (
+    !typeInscription ||
+    !firstName ||
+    !lastName ||
+    !birthDate ||
+    !gender ||
+    !contact ||
+    !contact.phone ||
+    !contact.email
+  ) {
+    const error = new Error("Missing required fields");
+    error.status = 400;
+    throw error;
+  }
 
-    // Valider la présence de tous les champs requis
-    if (
-      !typeInscription ||
-      !firstName ||
-      !lastName ||
-      !birthDate ||
-      !gender ||
-      !contact ||
-      !contact.phone ||
-      !contact.email
-    ) {
-      const error = new Error("Missing required fields");
+  // Vérifier les types MIME des documents
+  if (documents) {
+    if (documents.carteIdentite && !validateFileType(documents.carteIdentite)) {
+      const error = new Error("Invalid file type for carteIdentite");
       error.status = 400;
       throw error;
     }
-
-    // Créer une nouvelle inscription avec les champs extraits
-    const registration = new Registration({
-      typeInscription,
-      firstName,
-      lastName,
-      birthDate,
-      gender,
-      contact,
-      tutor,
-      address,
-      documents,
-      droitImage,
-      codePromo,
-      status,
-    });
-
-    // Sauvegarder l'inscription dans la base de données
-    await registration.save();
-
-    // Répondre avec l'inscription créée
-    res.status(201).json(registration);
-  } catch (error) {
-    next(error);
+    if (documents.justificatifDomicile && !validateFileType(documents.justificatifDomicile)) {
+      const error = new Error("Invalid file type for justificatifDomicile");
+      error.status = 400;
+      throw error;
+    }
+    if (documents.certificatMedical && !validateFileType(documents.certificatMedical)) {
+      const error = new Error("Invalid file type for certificatMedical");
+      error.status = 400;
+      throw error;
+    }
   }
+
+  const registration = new Registration({
+    typeInscription,
+    firstName,
+    lastName,
+    birthDate,
+    gender,
+    contact,
+    tutor,
+    address,
+    documents,
+    droitImage,
+    status,
+  });
+
+  await registration.save();
+  res.status(201).json(registration);
+} catch (error) {
+  next(error);
+}
 };
 
 // Obtenir toutes les inscriptions avec filtres optionnels

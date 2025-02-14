@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Admin</title>
+    <link rel="stylesheet" href="./css/login.css"> <!-- Lien vers le fichier CSS -->
+</head>
+<body>
+
+<div class="form-container">
+    <h1>Connexion Admin</h1>
+    <div class="form-group">
+        <label for="username">Nom d'utilisateur</label>
+        <input type="text" id="username" placeholder="Entrez votre nom d'utilisateur">
+    </div>
+    <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" placeholder="Entrez votre mot de passe">
+    </div>
+    <button onclick="login()">Se connecter</button>
+    <p class="error-message" id="errorMessage"></p>
+</div>
+
+<script src="./js/login.js"></script> <!-- Inclusion du script JS -->
+</body>
+</html>

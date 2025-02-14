@@ -9,6 +9,7 @@ const errorHandler = require('./middlewares/errorHandler');
 const authenticateAdmin = require('./middlewares/authMiddleware');
 const cron = require('node-cron');
 const updateAges = require('./utils/updateAges');
+const path = require('path');
 
 // Initialiser une instance d'Express
 const app = express();
@@ -16,10 +17,14 @@ const app = express();
 // Route pour le paiement Stripe placer avant  express.json .
 app.use('/stripe', require('./routes/paymentRoutes')); 
 
+
+// Middleware pour servir les fichiers statiques
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Utiliser les middlewares
 app.use(cors()); // Activer CORS pour permettre les requêtes cross-origin
-app.use(express.json()); // Middleware pour parser les requêtes JSON
-app.use(express.urlencoded({ extended: true })); // Middleware pour parser les requêtes URL-encoded
+app.use(express.json({ limit: '10mb' }));  // Middleware pour parser les requêtes JSON
+app.use(express.urlencoded({ limit: '10mb', extended: true }));  // Middleware pour parser les requêtes URL-encoded
 
 // Route publique (ne nécessite pas d'authentification)
 app.use('/auth', require('./routes/authRoutes'));

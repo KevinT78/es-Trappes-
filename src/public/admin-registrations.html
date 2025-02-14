@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Administration des Inscriptions - ES Trappes</title>
+    <link rel="stylesheet" href="./css/admin-registration.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Gestion des Inscriptions</h1>
+      </div>
+
+      <div class="filters">
+        <select id="statusFilter">
+          <option value="" selected>Tous les statuts</option>
+          <option value="attente">En attente</option>
+          <option value="accepté">Acceptés</option>
+          <option value="refusé">Refusés</option>
+        </select>
+        <select id="typeFilter">
+          <option value="">Tous les types</option>
+          <option value="nouvelle">Nouvelle inscription</option>
+          <option value="renouvellement">Renouvellement</option>
+          <option value="mutation">Mutation</option>
+        </select>
+      </div>
+
+      <div class="registrations-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Prénom</th>
+              <th>Type</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="registrationsTableBody">
+            <!-- Données remplis par JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal pour les détails -->
+    <div id="detailsModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Détails de l'inscription</h2>
+        <div id="registrationDetails">
+          <!-- Détails remplis par JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <script src="./js/admin-registration.js"></script>
+  </body>
+</html>
